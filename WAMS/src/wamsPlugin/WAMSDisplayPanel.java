@@ -6,6 +6,7 @@ import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.net.URL;
 import java.util.ArrayList;
 
 import javax.swing.JPanel;
@@ -201,7 +202,15 @@ public class WAMSDisplayPanel implements UserDisplayComponent {
 //			dlgContent.setRoot(holder);
 			summaryChart = new SummaryChartFX();
 			dlgContent.setRoot(summaryChart);
-			dlgContent.getScene().getStylesheets().add(getClass().getResource("/resources/chartStyle.css").toExternalForm());
+			try {
+				URL res = getClass().getResource("/resources/chartStyle.css");
+				if (res != null) {
+					dlgContent.getScene().getStylesheets().add(res.toExternalForm());
+				}
+			}
+			catch (Exception e) {
+				e.printStackTrace();
+			}
 		});
 		return dlgContent; 
 	}

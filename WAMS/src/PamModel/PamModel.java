@@ -23,7 +23,7 @@ package PamModel;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.Serializable;
-import java.lang.reflect.Method;
+import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
@@ -37,7 +37,9 @@ import javax.swing.JFrame;
 import Acquisition.DaqSystemInterface;
 import Array.ArraySidePanelControl;
 import clickDetector.ClickDetection;
+import dataMap.DataMapControl;
 import detectiongrouplocaliser.DetectionGroupControl;
+import effortmonitor.EffortControl;
 import whistlesAndMoans.AbstractWhistleDataUnit;
 import fftManager.FFTDataUnit;
 import fftManager.PamFFTControl;
@@ -45,11 +47,10 @@ import group3dlocaliser.Group3DLocaliserControl;
 import meygenturbine.MeygenTurbine;
 import printscreen.PrintScreenControl;
 import rockBlock.RockBlockControl;
+import tethys.TethysControl;
 import turbineops.TurbineOperationControl;
 import wamsPlugin.WAMSControl;
 import GPS.GpsDataUnit;
-import Map.MapController;
-import Map.gridbaselayer.GridbaseControl;
 import NMEA.NMEADataUnit;
 import PamController.PamControlledUnitSettings;
 import PamController.PamController;
@@ -60,10 +61,9 @@ import PamController.PamSettings;
 import PamDetection.RawDataUnit;
 import PamView.dialog.warn.WarnOnce;
 import PamguardMVC.PamDataBlock;
-import alfa.ALFAControl;
 import analogarraysensor.ArraySensorControl;
+import backupmanager.BackupManager;
 import beamformer.continuous.BeamFormerControl;
-import beamformer.localiser.BeamFormLocaliserControl;
 import bearinglocaliser.BearingLocaliserControl;
 import binaryFileStorage.SecondaryBinaryStore;
 import cepstrum.CepstrumControl;
@@ -76,7 +76,7 @@ import PamUtils.FileFinder;
  * PamController.
  * 
  */
-final public class PamModel implements PamModelInterface, PamSettings {
+final public class PamModel implements PamSettings {
 
 	private PamController pamController;
 
@@ -167,7 +167,6 @@ final public class PamModel implements PamModelInterface, PamSettings {
 	 * maximum numbers of each type of module that may get created. 
 	 */
 	public void createPamModel() {
-
 
 		/*
 		 * Make a series of module menu groups and add most of the 
@@ -349,14 +348,22 @@ final public class PamModel implements PamModelInterface, PamSettings {
 //		mi = PamModuleInfo.registerControlledUnit("decimus.summarystring.DStrControl", "Decimus Summary Strings");
 //		mi.setModulesMenuGroup(utilitiesGroup);
 //		mi.setToolTipText("Displays information from Decimus summary strings");
-//		mi.setHidden(SMRUEnable.isEnable() == false);
+//		mi.setHidden(SMRUEnable.isEnableDecimus() == false);
+
+//		mi = PamModuleInfo.registerControlledUnit(DecimusMitigateControl.class.getName(), "Decimus Network Control");
+//		mi.addDependency(new PamDependency(BuoyStatusDataUnit.class, NetworkReceiver.class.getName()));
+//		mi.setModulesMenuGroup(utilitiesGroup);
+//		mi.setToolTipText("Additional functionality for Decimus running in Mitigate mode. ");
+//		mi.setHidden(SMRUEnable.isEnableDecimus() == false);
 		//		}
 
 		if (isViewer) {
-			mi = PamModuleInfo.registerControlledUnit("dataMap.DataMapControl", "Data Map");
+			mi = PamModuleInfo.registerControlledUnit(DataMapControl.class.getName(), "Data Map");
 			mi.setModulesMenuGroup(utilitiesGroup);
 			mi.setToolTipText("Shows a summary of data density over time for large datasets");
-			mi.setMinNumber(1);
+			if (isViewer) {
+				mi.setMinNumber(1);
+			}
 			mi.setMaxNumber(1);
 		}
 
@@ -370,11 +377,11 @@ final public class PamModel implements PamModelInterface, PamSettings {
 		mi.setToolTipText("Creates a form for the user to manually log things they hear");
 		mi.setModulesMenuGroup(utilitiesGroup);		
 		
-		mi = PamModuleInfo.registerControlledUnit(qa.QAControl.class.getName(), "Performance Evaluation");	
+		mi = PamModuleInfo.registerControlledUnit(qa.QAControl.class.getName(), "Signal Injection and Detector Evaluation (SIDE)");	
 		mi.setModulesMenuGroup(utilitiesGroup);
 		mi.setToolTipText("Signal injection and real time performance tests");
 		mi.setMaxNumber(1);
-		mi.setHidden(SMRUEnable.isEnable() == false);
+//		mi.setHidden(SMRUEnable.isEnable() == false);
 
 		if (isViewer) {
 //			mi = PamModuleInfo.registerControlledUnit("xBatLogViewer.XBatLogControl", "XBat Log Viewer");
@@ -382,11 +389,11 @@ final public class PamModel implements PamModelInterface, PamSettings {
 //			mi.setModulesMenuGroup(utilitiesGroup);
 //			mi.setHidden(SMRUEnable.isEnable() == false);
 
-			mi = PamModuleInfo.registerControlledUnit("offlineProcessing.OfflineProcessingControlledUnit", "Offline Processing");
-			mi.setModulesMenuGroup(utilitiesGroup);
-			mi.setMinNumber(0);
-			mi.setMaxNumber(1);
-			mi.setHidden(SMRUEnable.isEnable() == false);
+//			mi = PamModuleInfo.registerControlledUnit("offlineProcessing.OfflineProcessingControlledUnit", "Offline Processing");
+//			mi.setModulesMenuGroup(utilitiesGroup);
+//			mi.setMinNumber(0);
+//			mi.setMaxNumber(1);
+//			mi.setHidden(SMRUEnable.isEnable() == false);
 			
 
 			mi = PamModuleInfo.registerControlledUnit(TurbineOperationControl.class.getName(), TurbineOperationControl.unitType);
@@ -408,10 +415,11 @@ final public class PamModel implements PamModelInterface, PamSettings {
 		mi.setModulesMenuGroup(utilitiesGroup);
 		mi.setHidden(SMRUEnable.isEnable() == false);
 
-		mi = PamModuleInfo.registerControlledUnit(ALFAControl.class.getName(), "Master Controller");
-		mi.setToolTipText("Big brother - will keep an eye on you and look after you");
-		mi.setModulesMenuGroup(utilitiesGroup);
-		mi.setHidden(SMRUEnable.isEnable() == false);
+		// now releagate to a plugin module. 
+//		mi = PamModuleInfo.registerControlledUnit(ALFAControl.class.getName(), "Master Controller");
+//		mi.setToolTipText("Big brother - will keep an eye on you and look after you");
+//		mi.setModulesMenuGroup(utilitiesGroup);
+//		mi.setHidden(SMRUEnable.isEnable() == false);
 		
 		mi = PamModuleInfo.registerControlledUnit(PrintScreenControl.class.getName(), "Print Screen");
 		mi.setToolTipText(PrintScreenControl.getToolTip());
@@ -436,13 +444,40 @@ final public class PamModel implements PamModelInterface, PamSettings {
 		mi.setHidden(SMRUEnable.isEnable() == false);
 		mi.setMaxNumber(1);
 		
+
+		mi = PamModuleInfo.registerControlledUnit(EffortControl.class.getName(), EffortControl.unitType);
+		mi.setToolTipText("Record observer monitoring effort");
+		mi.setModulesMenuGroup(utilitiesGroup);
+//		mi.setHidden(SMRUEnable.isEnable() == false);
+		mi.setToolTipText("Enables an observer to enter their name and infomation about which displays are being monitored");
+		mi.setMaxNumber(1);
+
+		mi = PamModuleInfo.registerControlledUnit(BackupManager.class.getName(), BackupManager.defaultName);
+		mi.setToolTipText("Manage automated data backups");
+		mi.setModulesMenuGroup(utilitiesGroup);
+		mi.setMaxNumber(1);
+
+
+//		mi = PamModuleInfo.registerControlledUnit(MetaDataContol.class.getName(), MetaDataContol.unitType);
+//		mi.setToolTipText("Project Meta Data");
+//		mi.setModulesMenuGroup(utilitiesGroup);
+//		mi.setMaxNumber(1); 
+		
+		if (isViewer) {
+			mi = PamModuleInfo.registerControlledUnit(TethysControl.class.getName(), TethysControl.defaultName);
+			mi.setToolTipText("Interface to Tethys Database");
+			mi.setModulesMenuGroup(utilitiesGroup);
+			mi.setMaxNumber(1);
+			//mi.addGUICompatabilityFlag(PamGUIManager.FX); //has FX enabled GUI.
+//			mi.setHidden(SMRUEnable.isEnable() == false);
+		}		
+		
 		mi = PamModuleInfo.registerControlledUnit(WAMSControl.class.getName(), WAMSControl.unitType);
 		mi.setToolTipText("Welfare Acoustic Monitoring System");
 		mi.setModulesMenuGroup(utilitiesGroup);
 		mi.setHidden(SMRUEnable.isEnable() == false);
 		mi.setMaxNumber(1);
 		
-
 		/*
 		 * ************* End Utilities  Group *******************
 		 */
@@ -486,11 +521,12 @@ final public class PamModel implements PamModelInterface, PamSettings {
 		mi.setHidden(isViewer == false);
 		mi.setMaxNumber(1);
 		
-		mi = PamModuleInfo.registerControlledUnit("cpod.CPODControl", "CPOD Detector Import");
+		mi = PamModuleInfo.registerControlledUnit("cpod.CPODControl2", "CPOD Detector Import");
 		mi.setModulesMenuGroup(sensorsGroup);
 		mi.setToolTipText("Imports CPOD data");
 		mi.setHidden(SMRUEnable.isEnable() == false);
-		
+		mi.addGUICompatabilityFlag(PamGUIManager.FX); //has FX enabled GUI.
+
 		/*
 		 * ************* Start Displays  Group *******************
 		 */
@@ -536,6 +572,7 @@ final public class PamModel implements PamModelInterface, PamSettings {
 		mi = PamModuleInfo.registerControlledUnit("soundPlayback.PlaybackControl", "Sound Output");	
 		mi.setToolTipText("Controls output of sound data for listening to on headphones");
 		mi.setModulesMenuGroup(processingGroup);
+		mi.addGUICompatabilityFlag(PamGUIManager.FX); //has FX enabled GUI.
 		if (isViewer) {
 			mi.setMinNumber(1);
 			mi.setMaxNumber(1);
@@ -558,6 +595,7 @@ final public class PamModel implements PamModelInterface, PamSettings {
 		mi.addDependency(new PamDependency(RawDataUnit.class, "Acquisition.AcquisitionControl"));	
 		mi.setToolTipText("Decimates (reduces the frequency of) audio data");
 		mi.setModulesMenuGroup(processingGroup);
+		mi.addGUICompatabilityFlag(PamGUIManager.FX); //has FX enabled GUI.
 
 		mi = PamModuleInfo.registerControlledUnit(CepstrumControl.class.getName(), CepstrumControl.unitType);	
 		mi.addDependency(new PamDependency(FFTDataUnit.class, PamFFTControl.class.getName()));	
@@ -628,17 +666,13 @@ final public class PamModel implements PamModelInterface, PamSettings {
 		mi.addDependency(new PamDependency(RawDataUnit.class, "Acquisition.AcquisitionControl"));	
 		mi.setToolTipText("");
 		mi.setModulesMenuGroup(processingGroup);
-
-		mi = PamModuleInfo.registerControlledUnit("difar.beamforming.BeamformControl", "DIFAR Directional Audio");
-		mi.addDependency(new PamDependency(RawDataUnit.class, "Acquisition.AcquisitionControl"));	
-		mi.setToolTipText("Audio from a DIFAR sonobuoy that has been beamformed at a user-specified single steering angle. This module can be used to reduce directional masking noise.");
 		mi.setModulesMenuGroup(processingGroup);
-		mi.setHidden(SMRUEnable.isEnable() == false);
+//		mi.setHidden(SMRUEnable.isEnable() == false);
 		
 		mi = PamModuleInfo.registerControlledUnit(BeamFormerControl.class.getName(), BeamFormerControl.unitType);	
 		mi.setModulesMenuGroup(processingGroup);
 		mi.setToolTipText("Continuous Frequency Domain Beamforming");
-		mi.setHidden(SMRUEnable.isEnable() == false);
+//		mi.setHidden(SMRUEnable.isEnable() == false);
 
 		
 		
@@ -657,11 +691,6 @@ final public class PamModel implements PamModelInterface, PamSettings {
 				+ "bearings to source, group into click trains, etc.");
 		mi.setModulesMenuGroup(detectorsGroup);
 		mi.addGUICompatabilityFlag(PamGUIManager.FX);
-		
-		mi = PamModuleInfo.registerControlledUnit("soundtrap.STClickControl", "SoundTrap Click Detector");
-		mi.setModulesMenuGroup(detectorsGroup);
-		mi.setToolTipText("Click Detector module for Soundtrap detector data");
-		mi.setHidden(isViewer == false);
 
 		mi = PamModuleInfo.registerControlledUnit("clickTrainDetector.ClickTrainControl", "Click Train Detector");
 		mi.addDependency(new PamDependency(RawDataUnit.class, "clickDetector.ClickControl"));	
@@ -707,11 +736,16 @@ final public class PamModel implements PamModelInterface, PamSettings {
 		mi.setModulesMenuGroup(detectorsGroup);	
 //		mi.setHidden(SMRUEnable.isEnable() == false);
 		
+		// remove GPL detector - too slow for real-time use
 		mi = PamModuleInfo.registerControlledUnit("gpl.GPLControlledUnit", "Generalised Power Law Detector");
 		mi.addDependency(new PamDependency(FFTDataUnit.class, "fftManager.PamFFTControl"));
 		mi.setToolTipText("Generalised Power Law Detector for tonal sounds");
 		mi.setModulesMenuGroup(detectorsGroup);	
-		mi.setHidden(SMRUEnable.isEnable() == false);
+
+		mi = PamModuleInfo.registerControlledUnit("soundtrap.STClickControl", "SoundTrap Click Detector");
+		mi.setModulesMenuGroup(detectorsGroup);
+		mi.setToolTipText("Click Detector module for Soundtrap detector data only");
+//		mi.setHidden(isViewer == false);
 
 //		mi = PamModuleInfo.registerControlledUnit("WorkshopDemo.WorkshopController", "Workshop Demo Detector");
 //		mi.addDependency(new PamDependency(FFTDataUnit.class, "fftManager.PamFFTControl"));
@@ -733,6 +767,7 @@ final public class PamModel implements PamModelInterface, PamSettings {
 		 * ************* Start Classifiers Group **************
 		 * 
 		 */
+		
 		mi = PamModuleInfo.registerControlledUnit("whistleClassifier.WhistleClassifierControl", "Whistle Classifier");	
 		mi.addDependency(new PamDependency(AbstractWhistleDataUnit.class, "whistlesAndMoans.WhistleMoanControl"));	
 		mi.setToolTipText("Analyses multiple whistle contours to assign to species");
@@ -748,7 +783,16 @@ final public class PamModel implements PamModelInterface, PamSettings {
 		mi.addDependency(new PamDependency(ClickDetection.class, "clickDetector.ClickControl"));	
 		mi.setToolTipText("Classifies clicks based on an ideal template to match and a template to reject. "
 				+ "An example of this is to classify beaked whale clicks in an environment with dolphin clicks");
+		mi.addGUICompatabilityFlag(PamGUIManager.FX);
 		mi.setModulesMenuGroup(classifierGroup);
+		
+		
+		mi = PamModuleInfo.registerControlledUnit("rawDeepLearningClassifier.DLControl", "Deep Learning Classifier");
+		mi.addDependency(new PamDependency(RawDataUnit.class, "Acquisition.AcquisitionControl"));
+		mi.setToolTipText("Classifies sections of raw acoustic data based on an imported deep learning classifier");
+		mi.setModulesMenuGroup(classifierGroup);
+		mi.addGUICompatabilityFlag(PamGUIManager.FX);
+		
 
 		/*
 		 * ************* End Classifiers Group *******************
@@ -757,19 +801,25 @@ final public class PamModel implements PamModelInterface, PamSettings {
 		/*
 		 * ************* Start Localisation Group **************
 		 */
-		mi = PamModuleInfo.registerControlledUnit(BearingLocaliserControl.class.getName(), BearingLocaliserControl.unitType);	
+		mi = PamModuleInfo.registerControlledUnit(BearingLocaliserControl.class.getName(), "Bearing Localiser");	
 		mi.setModulesMenuGroup(localiserGroup);
 		mi.setToolTipText("Estimate bearing to detections or spectrogram marks from small aperture arrays");
-		mi.setHidden(SMRUEnable.isEnable() == false);
+//		mi.setHidden(SMRUEnable.isEnable() == false);
 
-		mi = PamModuleInfo.registerControlledUnit(DetectionGroupControl.class.getName(), DetectionGroupControl.unitType);	
+		
+		mi = PamModuleInfo.registerControlledUnit(Group3DLocaliserControl.class.getName(), Group3DLocaliserControl.unitType);	
+		mi.setModulesMenuGroup(localiserGroup);
+		mi.setToolTipText("2D and 3D Localisation for large aperture arrays");
+//		mi.setHidden(SMRUEnable.isEnable() == false);
+
+		mi = PamModuleInfo.registerControlledUnit(DetectionGroupControl.class.getName(), "Detection Grouper");	
 		mi.setModulesMenuGroup(localiserGroup);
 		mi.setToolTipText("Groups detections and other data using manual annotations on PAMGuard displays");
 
-		mi = PamModuleInfo.registerControlledUnit(BeamFormLocaliserControl.class.getName(), BeamFormLocaliserControl.unitType);	
-		mi.setModulesMenuGroup(localiserGroup);
-		mi.setToolTipText("Localise detections or spectrogram marks with beamforming algorithms");
-		mi.setHidden(true); // now obsolete.
+//		mi = PamModuleInfo.registerControlledUnit(BeamFormLocaliserControl.class.getName(), BeamFormLocaliserControl.unitType);	
+//		mi.setModulesMenuGroup(localiserGroup);
+//		mi.setToolTipText("Localise detections or spectrogram marks with beamforming algorithms");
+//		mi.setHidden(true); // now obsolete.
 //		mi.setHidden(SMRUEnable.isEnable() == false);
 
 //		mi = PamModuleInfo.registerControlledUnit(CBLocaliserControl.class.getName(), CBLocaliserControl.unitType);	
@@ -790,25 +840,32 @@ final public class PamModel implements PamModelInterface, PamSettings {
 //		//mi.addDependency(new PamDependency(RawDataUnit.class, "Acquisition.AcquisitionControl"));	
 //		mi.setModulesMenuGroup(localiserGroup);
 //		mi.setToolTipText("Locates sounds using wide aperture arrays of hydrophones");
-////		mi.setMaxNumber(1);
+//		mi.setMaxNumber(1);
 
-		mi = PamModuleInfo.registerControlledUnit("targetMotionModule.TargetMotionControl", "Target Motion Localiser");
-		//mi.addDependency(new PamDependency(RawDataUnit.class, "Acquisition.AcquisitionControl"));	
+//		mi = PamModuleInfo.registerControlledUnit("targetMotionModule.TargetMotionControl", "Target Motion Localiser");
+//		//mi.addDependency(new PamDependency(RawDataUnit.class, "Acquisition.AcquisitionControl"));	
+//		mi.setModulesMenuGroup(localiserGroup);
+//		mi.setToolTipText("Locates sounds in 2D and 3D detected using towed hydrophone arrays");
+//		mi.setMaxNumber(1);
+//		mi.setHidden(SMRUEnable.isEnable() == false);
+		// TODO: Move all DIFAR modules into sub-menu under localisation>DIFAR>
+		mi = PamModuleInfo.registerControlledUnit("Azigram.AzigramControl", "DIFAR Azigram Engine");
+		mi.addDependency( new PamDependency(FFTDataUnit.class, "fftManager.PamFFTControl"));
 		mi.setModulesMenuGroup(localiserGroup);
-		mi.setToolTipText("Locates sounds in 2D and 3D detected using towed hydrophone arrays");
-		mi.setMaxNumber(1);
-		mi.setHidden(SMRUEnable.isEnable() == false);
-
+		mi.setToolTipText("(BETA) Azigram engine for multiplexed DIFAR data (BETA)");
+		
+		mi = PamModuleInfo.registerControlledUnit("difar.beamforming.BeamformControl", "DIFAR Directional Audio");
+		mi.addDependency(new PamDependency(RawDataUnit.class, "Acquisition.AcquisitionControl"));
+		mi.addDependency(new PamDependency(GpsDataUnit.class, "GPS.GPSControl"));
+		mi.setModulesMenuGroup(localiserGroup);
+		mi.setToolTipText("Audio from a DIFAR sonobuoy that has been beamformed at a user-specified single steering angle. This module can be used to reduce directional masking noise.");
+		
 		mi = PamModuleInfo.registerControlledUnit("difar.DifarControl", "DIFAR Localisation");
 		mi.addDependency(new PamDependency(RawDataUnit.class, "Acquisition.AcquisitionControl"));	
 		mi.setModulesMenuGroup(localiserGroup);
 		mi.setToolTipText("DIFAR Sonobuoy localisation module - takes raw data source with multiplexed directional audio data");
 		mi.setMaxNumber(1);
 		
-		mi = PamModuleInfo.registerControlledUnit(Group3DLocaliserControl.class.getName(), Group3DLocaliserControl.unitType);	
-		mi.setModulesMenuGroup(localiserGroup);
-		mi.setToolTipText("3D Localisation for large aperture arrays");
-		mi.setHidden(SMRUEnable.isEnable() == false);
 		/*
 		 *************** End Localisation Group **************** 
 		 */
@@ -823,7 +880,7 @@ final public class PamModel implements PamModelInterface, PamSettings {
 			mi.setModulesMenuGroup(displaysGroup);
 			mi.addGUICompatabilityFlag(PamGUIManager.FX);
 
-			mi = PamModuleInfo.registerControlledUnit("detectionPlotFX.DetectionDisplayControl", "Detection Display" );
+			mi = PamModuleInfo.registerControlledUnit("detectionPlotFX.DetectionDisplayControl2", "Detection Display" );
 			mi.setToolTipText("Display detection data");
 			mi.setModulesMenuGroup(displaysGroup);
 			mi.addGUICompatabilityFlag(PamGUIManager.FX);
@@ -894,14 +951,17 @@ final public class PamModel implements PamModelInterface, PamSettings {
 		
 	}
 
-	/* (non-Javadoc)
-	 * @see PamModel.PamModelInterface#startModel()
+
+
+	/**
+	 * Add any remaining REQUIRED modules.<br>
+	 * this get's called after the PamController has loaded it's main settings. 
+	 * So at this point, go through all the PamModuleInfo's and check that 
+	 * all have at least the minimum number required 
+	 * @return true
 	 */
 	public synchronized boolean startModel() {
 		/*
-		 * this get's called after the PamController has loaded it's main settings. 
-		 * So at this point, go through all the PamModuleInfo's and check that 
-		 * all have at least the minimum number required 
 		 */
 
 		PamSettingManager.getInstance().registerSettings(this);
@@ -918,11 +978,11 @@ final public class PamModel implements PamModelInterface, PamSettings {
 		
 //		writeModuleList();
 		
-		return false;
+		return true;
 	}
 
 	/**
-	 * Really just debu goutput to make a list of all modules ...
+	 * Really just debug output to make a list of all modules ...
 	 */
 	private void writeModuleList() {
 		ArrayList<PamModuleInfo> moduleInfoList = PamModuleInfo.getModuleList();
@@ -950,7 +1010,6 @@ final public class PamModel implements PamModelInterface, PamSettings {
 
 	}
 
-	@Override
 	public boolean modelSettings(JFrame frame) {
 		PamModelSettings newSettings = ThreadingDialog.showDialog(frame, pamModelSettings);
 		if (newSettings != null) {
@@ -1030,6 +1089,23 @@ final public class PamModel implements PamModelInterface, PamSettings {
 		// clear the current list
 		pluginList.clear();
 		daqList.clear();
+		
+		/*
+		 * If developing a new PAMPlugin in eclipse, the easiest way to do it is to make a new
+		 * Eclipse project for your plugin code. Within that project, copy this PamModel class 
+		 * and put it into a package with exactly the same name within your new project (i.e. PamModel)
+		 * then add a line to the copy of this class to explicitly add the class name of your new
+		 * plugin, e.g. 
+		pluginList.add(new CollatorPlugin());
+		 * The plugin information will then be extracted from the PamPluginInterface in the same way as
+		 * it would should it be being used as a real plugin, inclusing help information which will be 
+		 * added to the PAMGuard help 
+		 * 
+		 * When you export the code for your plugin to a jar file, remember to NOT inlcude the copy of 
+		 * PamModel !
+		 */
+		
+//		pluginList.add(new MorlaisWP1aPlugin());
 
 		// Load up whatever default classloader was used to create this class.  Must use the same classloader
 		// for all plugins, or else we will not be able to create proper dependencies between them or be able
@@ -1124,7 +1200,13 @@ final public class PamModel implements PamModelInterface, PamSettings {
 					    // Save the name of the class to the global pluginBeingLoaded variable, and load the class.
 					    this.setPluginBeingLoaded(className);
 //						Class c = cl.loadClass(className);
-						Class c = Class.forName(className, true, classLoader);
+					    /*
+					     * Was Failing here  if a plugin is loaded before a plugin that has classes
+					     * this one is dependent on. Seems that if we set the second parameter to 
+					     * false then it doesn't fully initialize the class, so will be OK, get past
+					     * this stage and fully load the class when it's used.  
+					     */
+						Class c = Class.forName(className, false, classLoader);
 						if (getPluginBeingLoaded()==null) {
 							continue;
 						}
@@ -1142,13 +1224,15 @@ final public class PamModel implements PamModelInterface, PamSettings {
 								if (intf[j].getName().equals("PamModel.PamPluginInterface")) {
 									
 									// create an instance of the interface class.  
-									PamPluginInterface pf = (PamPluginInterface) c.newInstance();
+									Constructor constructor = c.getDeclaredConstructor(null);
+									PamPluginInterface pf = (PamPluginInterface) constructor.newInstance(null);
 									if (getPluginBeingLoaded()==null) {
 										continue;
 									}
 
 									// Let the user know which valid plugins have been found
-									System.out.println("   Creating instance of " + pf.getDefaultName() + ": "  + pf.getClassName());
+									System.out.printf("   Loading plugin interface for %s : %s version %s\n",
+											pf.getDefaultName(), pf.getClassName(), pf.getVersion());
 									if (getPluginBeingLoaded()==null) {
 										continue;
 									}
@@ -1164,7 +1248,7 @@ final public class PamModel implements PamModelInterface, PamSettings {
 
 										pluginList.add(pf); // add it to the list
 									} else {
-										System.out.println("     Error: "+pf.getDefaultName()+" cannot run in this mode.  Skipping module.");									
+										System.out.println("     Error: " + pf.getDefaultName()+" cannot run in this mode.  Skipping module.");									
 									}
 									if (getPluginBeingLoaded()==null) {
 										continue;
@@ -1173,12 +1257,16 @@ final public class PamModel implements PamModelInterface, PamSettings {
 								
 								// now check for interfaces that implement DaqSystemInterface
 								if (intf[j].getName().equals("Acquisition.DaqSystemInterface")) {
-									DaqSystemInterface pf = (DaqSystemInterface) c.newInstance(); // create an instance of the interface class
+									Constructor constructor = c.getDeclaredConstructor(null);
+									DaqSystemInterface pf = (DaqSystemInterface) constructor.newInstance(null);
+//									DaqSystemInterface pf = (DaqSystemInterface) c.newInstance(); // create an instance of the interface class
 									if (getPluginBeingLoaded()==null) {
 										continue;
 									}
-									
-									System.out.println("   Creating instance of " + pf.getDefaultName() + ": "  + className);
+
+									System.out.printf("   Loading daq plugin interface for %s version %s\n",
+											pf.getDefaultName(), pf.getVersion());
+//									System.out.println("   Creating instance of " + pf.getDefaultName() + ": "  + className);
 									if (getPluginBeingLoaded()==null) {
 										continue;
 									}
@@ -1194,28 +1282,33 @@ final public class PamModel implements PamModelInterface, PamSettings {
 							// if there were any errors while accessing the plugin, let the user know and then move
 							// on to the next plugin.
 							} catch (Throwable e1) {
+								e1.printStackTrace();
 								String title = "Error accessing plug-in module";
 								String msg = "There is an error with the plug-in module " + className + ".<p>" +
 										"This may have been caused by an incompatibility between " +
 										"the plug-in and this version of PAMGuard.  Please check the developer's website " +
 										"for help.<p>" +
-										"This plug-in will not be available for loading";
+										"This plug-in will not be available for loading<p>" + 
+										e1.getClass().getName() + ": " + e1.getLocalizedMessage();
 								String help = null;
-								int ans = WarnOnce.showWarning(PamController.getInstance().getGuiFrameManager().getFrame(0), title, msg, WarnOnce.WARNING_MESSAGE, help, e1);
+								int ans = WarnOnce.showWarning(PamController.getMainFrame(), title, msg, WarnOnce.WARNING_MESSAGE, help, e1);
 								System.err.println("Exception while loading " +	className);
+								System.err.println(e1.getMessage());								
 								continue;
 							}
 						}						
 					}
 				} catch (Throwable ex) {
+					ex.printStackTrace();
 					String title = "Error accessing plug-in module";
 					String msg = "There is an error with the plug-in module " + jarList.get(i).getName() + ".<p>" +
 							"This may have been caused by an incompatibility between " +
 							"the plug-in and this version of PAMGuard.  Please check the developer's website " +
 							"for help.<p>" +
-							"This plug-in will not be available for loading";
+							"This plug-in will not be available for loading<p>"  + 
+							ex.getClass().getName() + ": " + ex.getLocalizedMessage();
 					String help = null;
-					int ans = WarnOnce.showWarning(PamController.getInstance().getGuiFrameManager().getFrame(0), title, msg, WarnOnce.WARNING_MESSAGE, help, ex);
+					int ans = WarnOnce.showWarning(PamController.getMainFrame(), title, msg, WarnOnce.WARNING_MESSAGE, help, ex);
 					System.err.println("Exception while loading " +	jarList.get(i).getName());
 					continue;
 				}
@@ -1306,7 +1399,7 @@ final public class PamModel implements PamModelInterface, PamSettings {
 								"for help.<p>" +
 								"This plug-in will not be available for loading";
 						String help = null;
-						int ans = WarnOnce.showWarning(PamController.getInstance().getGuiFrameManager().getFrame(0), title, msg, WarnOnce.WARNING_MESSAGE, help, e1);
+						int ans = WarnOnce.showWarning(PamController.getMainFrame(), title, msg, WarnOnce.WARNING_MESSAGE, help, e1);
 						System.err.println("Exception while loading " +	pf.getDefaultName());
 						pluginList.remove(pf);
 						continue;
@@ -1322,7 +1415,7 @@ final public class PamModel implements PamModelInterface, PamSettings {
 				System.out.println("Folder does not contain any jar files with a valid DaqSystemInterface class.");
 			}
 		} else {
-			System.out.println("Error - can't plugins find folder " + dir.getAbsolutePath());
+			System.out.println("Error - can't find plugins folder " + dir.getAbsolutePath());
 		}
 		this.clearPluginBeingLoaded();
 	}

@@ -1,0 +1,92 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+    "http://www.w3.org/TR/html4/loose.dtd">
+<html lang="en">
+<head>
+    <!-- Uncomment the next line and get rid of the following one to point to the correct stylesheet location when actually in use
+    <link href="../../../pamHelpStylesheet.css" type="text/css" rel="STYLESHEET">
+    -->
+    <link href="pamHelpStylesheet.css" type="text/css" rel="STYLESHEET">
+    <title>WAMS Module Output</title>
+</head>
+<body>
+    <h1>Welfare Acoustic Monitoring System</h1>
+    <h2>Output</h2>
+    <p>
+        The WAMS module outputs data to the database and a csv file.
+    </p>
+    <br>
+    <h3>Database Output</h3>
+    <p>
+        Two different tables are created in the database:
+        <ul>
+            <li>NMMF_WAMS_NMMF_WAMS</li>
+            <li>NMMF_WAMS_Summary_24Divisions</li>
+        </ul>
+    </p>
+    <p>
+        Note that the table names may be slightly different, depending on the
+        module name entered when the WAMS module was added to PAMGuard, as well
+        as the number of time divisions.
+    </p>
+    <p>
+        The NMMF_WAMS_NMMF_WAMS table records the counts in a single time
+        period. Each row has columns specifying a start time and end time.
+        During uninterupted processing, the start and end times are simply the
+        two ends of the time interval. But if PAMGuard processing is stopped
+        and restarted, the start/end times will reflect this and there could be
+        multiple rows for a single time interval. Any alarms that the WAMS module is
+        monitoring and have triggered will also be recorded in this table. The
+        data stored in this table is used to create the second table,
+        NMMF_WAMS_Summary_24Divisions.
+    </p>
+    <p>
+        Each row in the NMMF_WAMS_Summary_24Divisions table represents a single
+        day of counts, compiled from the previous table. There are columns that
+        represent each time interval of the day, and the values stored in those
+        columns are the number of counts. 
+    </p>
+    <br>
+    <br>
+    <h3><a name="wams_CSV">CSV File</a></h3>
+    <p>
+        Historical counts are saved to a csv file in order to provide a simple
+        method to maintain history when switching databases. It contains essentially the
+        same data as the NMMF_WAMS_Summary_24Divisions table in the database,
+        but in a condensed format. The csv filename is
+        <em>WAMSMeanValues_divXX.csv</em>, where XX is the number of time
+        divisions in a day. The folder is selected by the user in the <a
+        href="WAMS_Configure.html#wams_Output">Output</a> tab of the Settings dialog.
+    </p>
+    <p>
+        Each row of the csv file represents a single day of data:
+    </p>
+    <p style="margin-left: 40px">
+        <em>*05 May 2020 00:00:00,8,3,25,17,26,6,5,10,23,NaN,NaN,NaN,44,25,20,18,30,15,21,21,22,17,27,10</em>
+    </p>
+    <p>
+        The first value is the date, with an asterisk added as a prefix. The
+        asterisk is important - if loading the file into an Excel spreadsheet, a
+        value without the asterisk is recognized as a date and Excel may
+        <em>automatically change the format of the column when saving</em>. The
+        exact format that Excel uses depends on the locale settings of the
+        computer, and if this happens then PAMGuard no longer recognizes the date and
+        will not process the history correctly. With the asterisk Excel will
+        think the cell contains text, not a date, and leave it as is.
+    </p>
+    <p>
+        The remaining columns are the counts for that day, one value for each
+        time period. If PAMGuard was not running for a particular time interval, the counts will read <em>NaN</em>.
+    </p>
+
+
+ 
+     <!-- Prev/Next links below -->
+    <br>
+    <br>
+    <br>
+    <p class="prevLink"><a href="WAMS_Displays.html">Previous: WAMS Displays</a></p>
+    <br>
+    <br>
+    <br>
+</body>
+</html>

@@ -59,7 +59,7 @@ public class WamsPlugin implements PamPluginInterface {
 
 	@Override
 	public String getHelpSetName() {
-		return "help/WAMSHelp.hs";
+		return "wamsPlugin/help/WAMSHelp.hs";
 	}
 
 	@Override
@@ -84,17 +84,17 @@ public class WamsPlugin implements PamPluginInterface {
 
 	@Override
 	public String getVersion() {
-		return "2.2.1";
+		return "3.0.0";
 	}
 
 	@Override
 	public String getPamVerDevelopedOn() {
-		return "2.01.15ff";
+		return "2.02.11f";
 	}
 
 	@Override
 	public String getPamVerTestedOn() {
-		return "2.02.02";
+		return "2.03.00";
 	}
 
 	@Override

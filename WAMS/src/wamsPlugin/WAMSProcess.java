@@ -304,7 +304,9 @@ public class WAMSProcess extends PamProcess {
 //				alarmDataBlock.addObserver(this, multithread);
 //			}
 //		}
-		
+		if (sourceDataBlock == null) {
+			return;
+		}
 		// decide if we should be checking angles
 		if (sourceDataBlock.getLocalisationContents().hasLocContent(LocContents.HAS_BEARING) && wamsControl.getWamsParams().isVetoAngles()) {
 			checkAngles = true;
