@@ -309,6 +309,9 @@ public class WAMSHistoryManager {
 	 * Calculate the means from the historical data and pass the values to the WAMSMeanDataUnit
 	 */
 	public void calculateMeans() {
+		if (historicalCounts == null) {
+			return;
+		}
 		int numDivs = historicalCounts.get(0).size();
 		int numDays = historicalCounts.size();
 		

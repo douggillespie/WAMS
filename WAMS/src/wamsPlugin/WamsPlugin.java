@@ -84,17 +84,17 @@ public class WamsPlugin implements PamPluginInterface {
 
 	@Override
 	public String getVersion() {
-		return "3.0.0";
+		return "3.0.1";
 	}
 
 	@Override
 	public String getPamVerDevelopedOn() {
-		return "2.02.11f";
+		return "2.02.16f";
 	}
 
 	@Override
 	public String getPamVerTestedOn() {
-		return "2.03.00";
+		return "2.02.16";
 	}
 
 	@Override
